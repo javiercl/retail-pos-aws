@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build / dist
+dist/
+build/
+*.local
+
+# Environment (secrets)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Terraform (carpeta infra/ incluida: **/ aplica en cualquier subdirectorio)
+# Los archivos *.tf se versionan; no subir estado ni tfvars con contraseñas.
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfvars
+!**/terraform.tfvars.example
+
+# Docker
+**/.docker/
+
+# Misc
+coverage/
+.cache/
