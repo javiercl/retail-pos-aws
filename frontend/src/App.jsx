@@ -1,26 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
-const COGNITO_REGION = import.meta.env.VITE_COGNITO_REGION || 'us-east-1'
-const COGNITO_CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID || ''
+const TOKEN_KEY = 'accessToken'
 
 function apiUrl(path) {
   const p = path.startsWith('/') ? path : `/${path}`
   return `${API_BASE}${p}`
-}
-
-async function cognitoRequest(target, body) {
-  const res = await fetch(`https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-amz-json-1.1',
-      'X-Amz-Target': `AWSCognitoIdentityProviderService.${target}`,
-    },
-    body: JSON.stringify(body),
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data?.message || 'Error Cognito')
-  return data
 }
 
 export default function App() {
@@ -30,11 +15,9 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
-  const [idToken, setIdToken] = useState(localStorage.getItem('idToken') || '')
+  const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY) || '')
 
-  const isAuth = Boolean(idToken)
+  const isAuth = Boolean(token)
   const total = useMemo(
     () => cart.reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0),
     [cart]
@@ -56,30 +39,18 @@ export default function App() {
     })
   }
 
-  async function signUp() {
+  async function register() {
     try {
       setError('')
-      await cognitoRequest('SignUp', {
-        ClientId: COGNITO_CLIENT_ID,
-        Username: username,
-        Password: password,
-        UserAttributes: [{ Name: 'email', Value: email }],
+      const res = await fetch(apiUrl('/auth/register'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
       })
-      setAuthMode('confirm')
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  async function confirmSignUp() {
-    try {
-      setError('')
-      await cognitoRequest('ConfirmSignUp', {
-        ClientId: COGNITO_CLIENT_ID,
-        Username: username,
-        ConfirmationCode: code,
-      })
-      setAuthMode('login')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'No se pudo registrar')
+      localStorage.setItem(TOKEN_KEY, data.token)
+      setToken(data.token)
     } catch (err) {
       setError(err.message)
     }
@@ -88,15 +59,16 @@ export default function App() {
   async function login() {
     try {
       setError('')
-      const data = await cognitoRequest('InitiateAuth', {
-        ClientId: COGNITO_CLIENT_ID,
-        AuthFlow: 'USER_PASSWORD_AUTH',
-        AuthParameters: { USERNAME: username, PASSWORD: password },
+      const res = await fetch(apiUrl('/auth/login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
       })
-      const token = data?.AuthenticationResult?.IdToken
-      if (!token) throw new Error('No se recibio idToken')
-      localStorage.setItem('idToken', token)
-      setIdToken(token)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Credenciales invalidas')
+      if (!data.token) throw new Error('No se recibio token')
+      localStorage.setItem(TOKEN_KEY, data.token)
+      setToken(data.token)
     } catch (err) {
       setError(err.message)
     }
@@ -109,7 +81,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ items: cart }),
       })
@@ -122,8 +94,8 @@ export default function App() {
   }
 
   function logout() {
-    localStorage.removeItem('idToken')
-    setIdToken('')
+    localStorage.removeItem(TOKEN_KEY)
+    setToken('')
   }
 
   return (
@@ -142,22 +114,15 @@ export default function App() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {authMode === 'register' && (
-            <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          )}
-          {authMode === 'confirm' && (
-            <input
-              placeholder="Codigo confirmacion"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-          )}
           <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
             {authMode === 'login' && <button onClick={login}>Iniciar sesion</button>}
-            {authMode === 'register' && <button onClick={signUp}>Registrarse</button>}
-            {authMode === 'confirm' && <button onClick={confirmSignUp}>Confirmar cuenta</button>}
-            <button onClick={() => setAuthMode('login')}>Modo login</button>
-            <button onClick={() => setAuthMode('register')}>Modo registro</button>
+            {authMode === 'register' && <button onClick={register}>Registrarse</button>}
+            <button type="button" onClick={() => setAuthMode('login')}>
+              Modo login
+            </button>
+            <button type="button" onClick={() => setAuthMode('register')}>
+              Modo registro
+            </button>
           </div>
         </section>
       ) : (

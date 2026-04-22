@@ -61,73 +61,6 @@ resource "aws_security_group" "backend_sg" {
   }
 }
 
-resource "aws_security_group" "rds_sg" {
-  name        = "${var.project_name}-rds-sg"
-  description = "Allow PostgreSQL from backend SG"
-  vpc_id      = data.aws_vpc.default.id
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.backend_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_db_subnet_group" "main" {
-  name       = "${var.project_name}-db-subnets"
-  subnet_ids = data.aws_subnets.default_vpc.ids
-}
-
-resource "aws_db_instance" "postgres" {
-  identifier             = "${var.project_name}-postgres"
-  allocated_storage      = 20
-  storage_type           = "gp3"
-  engine                 = "postgres"
-  engine_version         = "16.3"
-  instance_class         = "db.t3.micro"
-  db_name                = var.db_name
-  username               = var.db_username
-  password               = var.db_password
-  db_subnet_group_name   = aws_db_subnet_group.main.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  publicly_accessible    = true
-  skip_final_snapshot    = true
-  deletion_protection    = false
-}
-
-resource "aws_cognito_user_pool" "users" {
-  name                    = "${var.project_name}-users"
-  auto_verified_attributes = ["email"]
-
-  password_policy {
-    minimum_length    = 8
-    require_lowercase = true
-    require_numbers   = true
-    require_symbols   = true
-    require_uppercase = true
-  }
-}
-
-resource "aws_cognito_user_pool_client" "web" {
-  name         = "${var.project_name}-web-client"
-  user_pool_id = aws_cognito_user_pool.users.id
-
-  generate_secret = false
-  explicit_auth_flows = [
-    "ALLOW_USER_PASSWORD_AUTH",
-    "ALLOW_USER_SRP_AUTH",
-    "ALLOW_REFRESH_TOKEN_AUTH"
-  ]
-}
-
 resource "aws_ecr_repository" "backend" {
   name                 = "${var.project_name}-backend"
   image_tag_mutability = "MUTABLE"
@@ -183,26 +116,20 @@ resource "aws_instance" "backend" {
     systemctl start docker
     usermod -aG docker ec2-user
 
+    install -d -m 0755 /home/ec2-user/posdata
+
     aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${aws_ecr_repository.backend.repository_url}
     docker pull ${local.ecr_image}
     docker rm -f retail-pos-api || true
     docker run -d --name retail-pos-api -p 8080:8080 \
+      -v /home/ec2-user/posdata:/app/data \
       -e PORT=8080 \
-      -e DB_HOST=${aws_db_instance.postgres.address} \
-      -e DB_PORT=5432 \
-      -e DB_NAME=${var.db_name} \
-      -e DB_USER=${var.db_username} \
-      -e DB_PASSWORD=${var.db_password} \
-      -e DB_SSL=true \
-      -e AWS_REGION=${var.aws_region} \
-      -e COGNITO_USER_POOL_ID=${aws_cognito_user_pool.users.id} \
-      -e COGNITO_CLIENT_ID=${aws_cognito_user_pool_client.web.id} \
+      -e SQLITE_PATH=/app/data/pos.sqlite \
+      -e JWT_SECRET="$(echo ${base64encode(var.jwt_secret)} | base64 -d)" \
       ${local.ecr_image}
   EOF
 
   tags = {
     Name = "${var.project_name}-backend-ec2"
   }
-
-  depends_on = [aws_db_instance.postgres]
 }

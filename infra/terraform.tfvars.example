@@ -1,1 +1,1 @@
-db_password = "ChangeMe123!"
+jwt_secret = "ChangeMeToALongRandomStringAtLeast32Chars"

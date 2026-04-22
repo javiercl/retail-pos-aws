@@ -6,7 +6,7 @@ dist/
 build/
 *.local
 
-# Environment (secrets)
+# Entorno local (ej. frontend Vite)
 .env
 .env.*
 !.env.example
