@@ -8,11 +8,11 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-console.log(process.env.DB_PASSWORD);
-console.log(process.env.DB_HOST);
-console.log(process.env.DB_PORT);
-console.log(process.env.DB_USER);
-console.log(process.env.DB_NAME);
+console.log(process.env.DB_PASSWORD || 'no password');
+console.log(process.env.DB_HOST || 'no host' );
+console.log(process.env.DB_PORT || 'no port');
+console.log(process.env.DB_USER || 'no user');
+console.log(process.env.DB_NAME || 'no name');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
