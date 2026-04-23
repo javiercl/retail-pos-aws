@@ -8,6 +8,12 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+console.log(process.env.DB_PASSWORD);
+console.log(process.env.DB_HOST);
+console.log(process.env.DB_PORT);
+console.log(process.env.DB_USER);
+console.log(process.env.DB_NAME);
+
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
