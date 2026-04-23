@@ -1,45 +1,50 @@
-import express from 'express'
-import { Pool } from 'pg';
-import AWS from 'aws-sdk';
-AWS.config.update({ region: 'us-west-2' });
+import express from 'express';
+import dotenv from 'dotenv';
+import pkg from 'pg';
+const { Pool } = pkg;
 
-const app = express()
-const port = Number(process.env.PORT || 8080)
+dotenv.config();
 
-const dbHost = process.env.DB_HOST || 'mi-bd-prueba-instance-1.ccuu52uctcpx.us-west-2.rds.amazonaws.com';
-const dbPort = Number(process.env.DB_PORT || 5432);
-const dbUser = process.env.DB_USER || 'postgres';
-const dbPassword = process.env.DB_PASSWORD || process.env.password;
-const dbName = process.env.DB_NAME || 'postgres';
-
-if (!dbPassword) {
-  console.warn('Advertencia: DB_PASSWORD no esta definido.');
-}
+const app = express();
+app.use(express.json());
 
 const pool = new Pool({
-  host: dbHost,
-  port: dbPort,
-  user: dbUser,
-  password: dbPassword,
-  database: dbName,
-  ssl: { rejectUnauthorized: false }
-});
-
-app.get('/', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT version()');
-    res.type('text/plain').send('hola mundo: ' + result.rows[0].version.toString());
-  } catch (err) {
-    console.error('Error en la consulta:', {
-      host: dbHost,
-      port: dbPort,
-      code: err?.code,
-      message: err?.message
-    });
-    res.status(500).send('Error en la base de datos');
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  ssl: {
+    rejectUnauthorized: false
   }
 });
 
-app.listen(port, () => {
-  console.log(`Escuchando en ${port}`)
-})
+app.get('/time', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ serverTime: result.rows[0].now });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error conectando a la BD' });
+  }
+});
+
+const basePort = Number(process.env.PORT || 3000);
+
+function startServer(port) {
+  const server = app.listen(port, () => {
+    console.log(`Servidor corriendo en puerto ${port}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const nextPort = port + 1;
+      console.warn(`Puerto ${port} en uso, intentando ${nextPort}...`);
+      startServer(nextPort);
+      return;
+    }
+    throw err;
+  });
+}
+
+startServer(basePort);
