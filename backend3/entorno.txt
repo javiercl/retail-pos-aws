@@ -1,0 +1,10 @@
+DB_PASSWORD=
+PORT=3000
+DB_HOST=dbtest.ccuu52uctcpx.us-west-2.rds.amazonaws.com
+DB_PORT=5432
+DB_USER=postgres
+DB_NAME=postgres
+COGNITO_REGION=mx-central-1
+COGNITO_USER_POOL_ID=
+COGNITO_CLIENT_ID=
+COGNITO_CLIENT_SECRET=
