@@ -196,7 +196,7 @@ app.get('/time', verifyCognitoToken, async (req, res) => {
   }
 });
 
-const basePort = Number(process.env.PORT || 4000);
+const basePort = Number(process.env.PORT || 3000);
 
 function startServer(port) {
   const server = app.listen(port, () => {
