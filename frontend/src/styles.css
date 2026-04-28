@@ -1,0 +1,113 @@
+.app-shell {
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  background: #f4f6fb;
+  color: #1f2937;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #111827;
+  color: #fff;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-btn,
+.primary-btn,
+.logout-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.nav-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.nav-btn.active {
+  background: #60a5fa;
+  color: #fff;
+}
+
+.primary-btn {
+  background: #2563eb;
+  color: #fff;
+}
+
+.logout-btn {
+  background: #ef4444;
+  color: #fff;
+}
+
+.card {
+  max-width: 560px;
+  margin: 32px auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.form input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.profile-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #3b82f6;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: bold;
+}
+
+.warning,
+.error,
+.success {
+  max-width: 560px;
+  margin: 12px auto;
+}
+
+.warning {
+  color: #9a3412;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.success {
+  color: #15803d;
+}

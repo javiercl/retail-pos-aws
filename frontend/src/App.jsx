@@ -1,165 +1,252 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
-const TOKEN_KEY = 'accessToken'
+const AUTH_STORAGE_KEY = 'authData'
 
 function apiUrl(path) {
   const p = path.startsWith('/') ? path : `/${path}`
   return `${API_BASE}${p}`
 }
 
-export default function App() {
-  const [products, setProducts] = useState([])
-  const [cart, setCart] = useState([])
-  const [error, setError] = useState('')
-  const [authMode, setAuthMode] = useState('login')
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY) || '')
+function getStoredAuth() {
+  const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
 
-  const isAuth = Boolean(token)
-  const total = useMemo(
-    () => cart.reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0),
-    [cart]
+function AppNavbar({ isAuthenticated, userName, onLogout }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  return (
+    <header className="navbar">
+      <h1 className="app-title">Retail POS App</h1>
+      <nav className="navbar-actions">
+        {!isAuthenticated ? (
+          <>
+            <button
+              className={`nav-btn ${location.pathname === '/register' ? 'active' : ''}`}
+              onClick={() => navigate('/register')}
+            >
+              Register
+            </button>
+            <button
+              className={`nav-btn ${location.pathname === '/login' ? 'active' : ''}`}
+              onClick={() => navigate('/login')}
+            >
+              Login
+            </button>
+          </>
+        ) : (
+          <div className="profile-box">
+            <div className="avatar">{userName?.[0]?.toUpperCase() || 'U'}</div>
+            <span>{userName || 'Usuario'}</span>
+            <button className="logout-btn" onClick={onLogout}>
+              Logout
+            </button>
+          </div>
+        )}
+      </nav>
+    </header>
+  )
+}
+
+function HomePage() {
+  return (
+    <section className="card">
+      <h2>Home</h2>
+      <p>Esta pagina es publica. Puedes registrarte o iniciar sesion desde el navbar.</p>
+    </section>
+  )
+}
+
+function RegisterPage() {
+  const navigate = useNavigate()
+  const [form, setForm] = useState({ username: '', email: '', name: '', password: '' })
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+
+  const canSubmit = useMemo(
+    () => form.username.trim() && form.email.trim() && form.password.trim(),
+    [form]
   )
 
-  useEffect(() => {
-    if (!API_BASE) return
-    fetch(apiUrl('/products'))
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('No se pudo cargar catalogo'))))
-      .then((data) => setProducts(Array.isArray(data) ? data : []))
-      .catch((err) => setError(err.message))
-  }, [])
-
-  function addToCart(product) {
-    setCart((prev) => {
-      const found = prev.find((p) => p.id === product.id)
-      if (!found) return [...prev, { ...product, qty: 1 }]
-      return prev.map((p) => (p.id === product.id ? { ...p, qty: p.qty + 1 } : p))
-    })
+  function handleChange(event) {
+    const { name, value } = event.target
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  async function register() {
+  async function handleSubmit(event) {
+    event.preventDefault()
     try {
+      setLoading(true)
+      setMessage('')
       setError('')
-      const res = await fetch(apiUrl('/auth/register'), {
+      const response = await fetch(apiUrl('/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(form),
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || 'No se pudo registrar')
-      localStorage.setItem(TOKEN_KEY, data.token)
-      setToken(data.token)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.message || data?.error || 'Error al registrar')
+      setMessage('Registro exitoso. Confirma el usuario en Cognito y luego inicia sesion.')
+      setForm({ username: '', email: '', name: '', password: '' })
+      setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
       setError(err.message)
+    } finally {
+      setLoading(false)
     }
-  }
-
-  async function login() {
-    try {
-      setError('')
-      const res = await fetch(apiUrl('/auth/login'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || 'Credenciales invalidas')
-      if (!data.token) throw new Error('No se recibio token')
-      localStorage.setItem(TOKEN_KEY, data.token)
-      setToken(data.token)
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  async function checkout() {
-    try {
-      setError('')
-      const res = await fetch(apiUrl('/sales'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ items: cart }),
-      })
-      if (!res.ok) throw new Error('No se pudo registrar la venta')
-      setCart([])
-      alert('Venta registrada correctamente')
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY)
-    setToken('')
   }
 
   return (
-    <main style={{ maxWidth: 900, margin: '24px auto', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Retail POS</h1>
-      {!API_BASE && <p>Configura VITE_API_URL en .env</p>}
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-
-      {!isAuth ? (
-        <section>
-          <h2>Autenticacion</h2>
-          <input placeholder="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            {authMode === 'login' && <button onClick={login}>Iniciar sesion</button>}
-            {authMode === 'register' && <button onClick={register}>Registrarse</button>}
-            <button type="button" onClick={() => setAuthMode('login')}>
-              Modo login
-            </button>
-            <button type="button" onClick={() => setAuthMode('register')}>
-              Modo registro
-            </button>
-          </div>
-        </section>
-      ) : (
-        <section>
-          <p>Sesion activa con JWT</p>
-          <button onClick={logout}>Cerrar sesion</button>
-        </section>
-      )}
-
-      <section>
-        <h2>Productos</h2>
-        <ul>
-          {products.map((p) => (
-            <li key={p.id}>
-              {p.name} - ${p.price}
-              <button onClick={() => addToCart(p)} style={{ marginLeft: 8 }}>
-                Agregar
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>Carrito</h2>
-        <ul>
-          {cart.map((item) => (
-            <li key={item.id}>
-              {item.name} x {item.qty} = ${Number(item.price) * Number(item.qty)}
-            </li>
-          ))}
-        </ul>
-        <p>Total: ${total.toFixed(2)}</p>
-        <button disabled={!isAuth || cart.length === 0} onClick={checkout}>
-          Confirmar venta
+    <section className="card">
+      <h2>Register</h2>
+      <form className="form" onSubmit={handleSubmit}>
+        <input name="username" placeholder="Username" value={form.username} onChange={handleChange} />
+        <input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} />
+        <input name="name" placeholder="Nombre completo (opcional)" value={form.name} onChange={handleChange} />
+        <input
+          name="password"
+          type="password"
+          placeholder="Password"
+          value={form.password}
+          onChange={handleChange}
+        />
+        <button className="primary-btn" disabled={!canSubmit || loading}>
+          {loading ? 'Registrando...' : 'Crear cuenta'}
         </button>
-      </section>
+      </form>
+      {message ? <p className="success">{message}</p> : null}
+      {error ? <p className="error">{error}</p> : null}
+    </section>
+  )
+}
+
+function LoginPage({ onLogin }) {
+  const navigate = useNavigate()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    try {
+      setLoading(true)
+      setError('')
+      const response = await fetch(apiUrl('/auth/login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.message || data?.error || 'Credenciales invalidas')
+      if (!data.accessToken) throw new Error('No se recibio accessToken')
+
+      const privateResponse = await fetch(apiUrl('/private'), {
+        headers: { Authorization: `Bearer ${data.accessToken}` },
+      })
+      const privateData = await privateResponse.json().catch(() => ({}))
+      if (!privateResponse.ok) throw new Error(privateData?.error || 'No se pudo validar el token')
+
+      const auth = {
+        accessToken: data.accessToken,
+        idToken: data.idToken || '',
+        username: privateData?.username || username,
+      }
+      onLogin(auth)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2>Login</h2>
+      <form className="form" onSubmit={handleSubmit}>
+        <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Username" />
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="Password"
+        />
+        <button className="primary-btn" disabled={!username || !password || loading}>
+          {loading ? 'Ingresando...' : 'Ingresar'}
+        </button>
+      </form>
+      {error ? <p className="error">{error}</p> : null}
+    </section>
+  )
+}
+
+function DashboardPage({ userName }) {
+  return (
+    <section className="card">
+      <h2>Dashboard Privado</h2>
+      <p>Solo usuarios autenticados pueden ver esta pagina.</p>
+      <p>
+        Bienvenido, <strong>{userName}</strong>.
+      </p>
+    </section>
+  )
+}
+
+function PrivateRoute({ isAuthenticated, children }) {
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  return children
+}
+
+export default function App() {
+  const navigate = useNavigate()
+  const [auth, setAuth] = useState(() => getStoredAuth())
+  const isAuthenticated = Boolean(auth?.accessToken)
+
+  function handleLogin(nextAuth) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth))
+    setAuth(nextAuth)
+  }
+
+  function handleLogout() {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuth(null)
+    navigate('/')
+  }
+
+  return (
+    <main className="app-shell">
+      <AppNavbar
+        isAuthenticated={isAuthenticated}
+        userName={auth?.username}
+        onLogout={handleLogout}
+      />
+
+      {!API_BASE ? <p className="warning">Configura VITE_API_URL en el archivo .env</p> : null}
+
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute isAuthenticated={isAuthenticated}>
+              <DashboardPage userName={auth?.username || 'Usuario'} />
+            </PrivateRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </main>
   )
 }
