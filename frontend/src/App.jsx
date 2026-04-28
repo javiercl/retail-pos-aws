@@ -68,7 +68,10 @@ function HomePage() {
 function RegisterPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ username: '', email: '', name: '', password: '' })
+  const [verificationCode, setVerificationCode] = useState('')
+  const [pendingUsername, setPendingUsername] = useState('')
   const [loading, setLoading] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -95,13 +98,36 @@ function RegisterPage() {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data?.message || data?.error || 'Error al registrar')
-      setMessage('Registro exitoso. Confirma el usuario en Cognito y luego inicia sesion.')
-      setForm({ username: '', email: '', name: '', password: '' })
-      setTimeout(() => navigate('/login'), 1500)
+      setPendingUsername(form.username)
+      setMessage('Registro exitoso. Revisa tu email y escribe el codigo de verificacion para confirmar el usuario.')
+      setForm((prev) => ({ ...prev, password: '' }))
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleConfirm(event) {
+    event.preventDefault()
+    try {
+      setConfirming(true)
+      setError('')
+      setMessage('')
+      const response = await fetch(apiUrl('/auth/confirm'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: pendingUsername || form.username, code: verificationCode }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.message || data?.error || 'No se pudo confirmar usuario')
+      setMessage('Usuario confirmado correctamente. Seras redirigido a login.')
+      setVerificationCode('')
+      setTimeout(() => navigate('/login'), 1200)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -121,6 +147,21 @@ function RegisterPage() {
         />
         <button className="primary-btn" disabled={!canSubmit || loading}>
           {loading ? 'Registrando...' : 'Crear cuenta'}
+        </button>
+      </form>
+      <form className="form confirm-form" onSubmit={handleConfirm}>
+        <input
+          value={pendingUsername || form.username}
+          onChange={(event) => setPendingUsername(event.target.value)}
+          placeholder="Username a confirmar"
+        />
+        <input
+          value={verificationCode}
+          onChange={(event) => setVerificationCode(event.target.value)}
+          placeholder="Codigo de verificacion"
+        />
+        <button className="primary-btn" disabled={!verificationCode || !(pendingUsername || form.username) || confirming}>
+          {confirming ? 'Confirmando...' : 'Confirmar usuario'}
         </button>
       </form>
       {message ? <p className="success">{message}</p> : null}

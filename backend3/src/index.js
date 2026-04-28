@@ -157,6 +157,37 @@ app.post('/auth/register', async (req, res) => {
   }
 });
 
+app.post('/auth/confirm', async (req, res) => {
+  if (!cognitoClientId) {
+    return res.status(500).json({ error: 'Falta COGNITO_CLIENT_ID' });
+  }
+
+  const { username, code } = req.body || {};
+  if (!username || !code) {
+    return res.status(400).json({ error: 'username y code son requeridos' });
+  }
+
+  const secretHash = buildSecretHash(username);
+
+  try {
+    await cognito.confirmSignUp({
+      ClientId: cognitoClientId,
+      Username: username,
+      ConfirmationCode: code,
+      ...(secretHash ? { SecretHash: secretHash } : {})
+    }).promise();
+
+    return res.json({
+      message: 'Usuario confirmado correctamente. Ya puedes iniciar sesion.'
+    });
+  } catch (error) {
+    return res.status(400).json({
+      error: error.code || 'ConfirmError',
+      message: error.message
+    });
+  }
+});
+
 app.post('/auth/login', async (req, res) => {
   if (!cognitoClientId) {
     return res.status(500).json({ error: 'Falta COGNITO_CLIENT_ID' });
