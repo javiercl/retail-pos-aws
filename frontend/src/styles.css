@@ -14,6 +14,12 @@
   color: #fff;
 }
 
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .app-title {
   margin: 0;
   font-size: 1.2rem;
@@ -64,15 +70,17 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
+.wide-card {
+  max-width: 980px;
+}
+
 .form {
   display: grid;
   gap: 12px;
 }
 
-.confirm-form {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid #e5e7eb;
+.grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .form input {
@@ -80,6 +88,62 @@
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 0.95rem;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.menu-group {
+  position: relative;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  min-width: 160px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.menu-item {
+  width: 100%;
+  border: none;
+  background: #fff;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: #f3f4f6;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.crud-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.crud-table th,
+.crud-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px;
+  text-align: left;
 }
 
 .profile-box {
@@ -116,4 +180,31 @@
 
 .success {
   color: #15803d;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+}
+
+.modal h3 {
+  margin: 0 0 8px;
+}
+
+.modal p {
+  margin: 0 0 14px;
+  color: #374151;
 }

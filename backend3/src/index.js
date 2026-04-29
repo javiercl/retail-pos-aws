@@ -234,6 +234,145 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
+app.get('/users', verifyCognitoToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, cognito_sub, username, email, full_name, password_hash, is_active, created_at, updated_at
+      FROM users
+      ORDER BY id DESC
+    `);
+    return res.json(result.rows);
+  } catch (error) {
+    return res.status(500).json({ error: 'Error listando usuarios', message: error.message });
+  }
+});
+
+app.post('/users', verifyCognitoToken, async (req, res) => {
+  const { cognito_sub, username, email, full_name, password_hash, is_active } = req.body || {};
+  if (!username || !email) {
+    return res.status(400).json({ error: 'username y email son requeridos' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO users (cognito_sub, username, email, full_name, password_hash, is_active)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, true))
+       RETURNING id, cognito_sub, username, email, full_name, password_hash, is_active, created_at, updated_at`,
+      [cognito_sub || null, username, email, full_name || null, password_hash || null, is_active]
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (error) {
+    return res.status(400).json({ error: 'Error creando usuario', message: error.message });
+  }
+});
+
+app.put('/users/:id', verifyCognitoToken, async (req, res) => {
+  const { id } = req.params;
+  const { cognito_sub, username, email, full_name, password_hash, is_active } = req.body || {};
+  if (!username || !email) {
+    return res.status(400).json({ error: 'username y email son requeridos' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE users
+       SET cognito_sub = $1, username = $2, email = $3, full_name = $4, password_hash = $5, is_active = COALESCE($6, true)
+       WHERE id = $7
+       RETURNING id, cognito_sub, username, email, full_name, password_hash, is_active, created_at, updated_at`,
+      [cognito_sub || null, username, email, full_name || null, password_hash || null, is_active, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    return res.json(result.rows[0]);
+  } catch (error) {
+    return res.status(400).json({ error: 'Error actualizando usuario', message: error.message });
+  }
+});
+
+app.delete('/users/:id', verifyCognitoToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    return res.json({ message: 'Usuario eliminado' });
+  } catch (error) {
+    return res.status(400).json({ error: 'Error eliminando usuario', message: error.message });
+  }
+});
+
+app.get('/products', verifyCognitoToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, sku, name, description, price, stock, is_active, created_at, updated_at
+      FROM products
+      ORDER BY id DESC
+    `);
+    return res.json(result.rows);
+  } catch (error) {
+    return res.status(500).json({ error: 'Error listando productos', message: error.message });
+  }
+});
+
+app.post('/products', verifyCognitoToken, async (req, res) => {
+  const { sku, name, description, price, stock, is_active } = req.body || {};
+  if (!sku || !name || price === undefined || stock === undefined) {
+    return res.status(400).json({ error: 'sku, name, price y stock son requeridos' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO products (sku, name, description, price, stock, is_active)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, true))
+       RETURNING id, sku, name, description, price, stock, is_active, created_at, updated_at`,
+      [sku, name, description || null, Number(price), Number(stock), is_active]
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (error) {
+    return res.status(400).json({ error: 'Error creando producto', message: error.message });
+  }
+});
+
+app.put('/products/:id', verifyCognitoToken, async (req, res) => {
+  const { id } = req.params;
+  const { sku, name, description, price, stock, is_active } = req.body || {};
+  if (!sku || !name || price === undefined || stock === undefined) {
+    return res.status(400).json({ error: 'sku, name, price y stock son requeridos' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE products
+       SET sku = $1, name = $2, description = $3, price = $4, stock = $5, is_active = COALESCE($6, true)
+       WHERE id = $7
+       RETURNING id, sku, name, description, price, stock, is_active, created_at, updated_at`,
+      [sku, name, description || null, Number(price), Number(stock), is_active, id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    return res.json(result.rows[0]);
+  } catch (error) {
+    return res.status(400).json({ error: 'Error actualizando producto', message: error.message });
+  }
+});
+
+app.delete('/products/:id', verifyCognitoToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING id', [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    return res.json({ message: 'Producto eliminado' });
+  } catch (error) {
+    return res.status(400).json({ error: 'Error eliminando producto', message: error.message });
+  }
+});
+
 app.get('/time', verifyCognitoToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
