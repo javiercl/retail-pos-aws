@@ -62,7 +62,7 @@ function AppNavbar({ isAuthenticated, userName, onLogout }) {
         <h1 className="app-title">Retail POS App</h1>
         {isAuthenticated ? (
           <div className="menu-group">
-            <button className="nav-btn" onClick={() => setMenuOpen((prev) => !prev)}>
+            <button className="menu-trigger" onClick={() => setMenuOpen((prev) => !prev)}>
               Configuracion
             </button>
             {menuOpen ? (

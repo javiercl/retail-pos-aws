@@ -105,6 +105,20 @@
   position: relative;
 }
 
+.menu-trigger {
+  border: none;
+  border-radius: 0;
+  padding: 8px 12px;
+  background: transparent;
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.menu-trigger:hover {
+  background: #1f2937;
+}
+
 .menu-dropdown {
   position: absolute;
   top: 38px;
